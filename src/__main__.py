@@ -10,6 +10,7 @@ from katunog.api import (
     ProvinceList,
     RegionAndIslandList,
 )
+from utils.unzipper import Unzipper
 
 # Configure logging
 logging.basicConfig(level=logging.INFO, format="%(asctime)s - %(levelname)s - %(message)s")
@@ -45,6 +46,8 @@ async def main():
     # Download samples
     await InstrumentMediaFiles(ssl=False).download_files(page=1, limit=1000)
 
+    # Unzip samples
+    Unzipper("samples", "unzipped").unzip_files()
 
 if __name__ == "__main__":
     asyncio.run(main())
