@@ -190,6 +190,9 @@ class InstrumentMediaFiles(KatunogAPI):
         # Ensure the folder exists
         os.makedirs(folder, exist_ok=True)
 
+        # Get existing list of instruments in the folder
+        existing_files = os.listdir(folder)
+
         data = await self.get_data(page, limit)
         instruments = data.get("data", {}).get("instruments", {}).get("objects", [])
 
@@ -227,12 +230,16 @@ class InstrumentMediaFiles(KatunogAPI):
 
                     # Download the file
                     async with session.get(download_url, ssl=self.ssl) as response:
-                        if response.status == 200:
-                            file_full_path = os.path.join(folder, f"{instrument_name}.zip")
-                            with open(file_full_path, "wb") as f:
-                                async for chunk in response.content.iter_chunked(1024):
+                        file_name = f"{instrument_name}.zip"
+                        exists = file_name in existing_files
+                        if response.status == 200 and not exists:
+                            async for chunk in response.content.iter_chunked(1024):
+                                file_full_path = os.path.join(folder, f"{instrument_name}.zip")
+                                with open(file_full_path, "wb") as f:
                                     f.write(chunk)
                             logging.info(f"Downloaded {instrument_name} to {file_full_path}")
+                        elif exists:
+                            logging.info(f"{instrument_name} already exists in {folder}")
                         else:
                             logging.error(f"Failed to download {instrument_name} from {download_url}")
 

@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 async def main():
     try:
-        instrument_list = await InstrumentList(ssl=False).get_data(page=1, limit=1)
+        instrument_list = await InstrumentList(ssl=False).get_data(page=1, limit=1000)
         logger.info(f"Instrument List: {instrument_list}")
 
         instrument_location = await InstrumentLocation(ssl=False).get_data(page=1, limit=1)

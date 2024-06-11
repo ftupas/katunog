@@ -1,4 +1,4 @@
-.PHONY: help install pre-commit build test lint format
+.PHONY: help install pre-commit build test lint format run
 
 .DEFAULT: help
 help:
@@ -48,6 +48,9 @@ pre-commit:
 
 build:
 	poetry build
+
+run:
+	poetry run python -m src
 
 test:
 	poetry run pytest -v --cov --no-coverage-upload --cov-branch -p no:cacheprovider
