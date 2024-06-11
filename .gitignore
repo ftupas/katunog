@@ -1,0 +1,37 @@
+# Poetry
+*.egg
+!/tests/**/*.egg
+/*.egg-info
+/dist/*
+**/reports/*
+
+# Tests
+.coverage
+.pytest_cache
+
+# System
+.DS_Store
+.idea/*
+.python-version
+.vscode/*
+
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Python packages and environments
+.python_packages
+.tool-versions
+.venv
+
+# Output directories
+out/
+tests/unit/*/*.xml
+tests/integration/*/*.xml
+**/test-output.xml
+coverage.xml
+coverage.json
+
+# Trunk
+.trunk

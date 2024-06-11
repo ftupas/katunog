@@ -1,0 +1,146 @@
+[tool.poetry]
+name = "katunog"
+version = "0.1.0"
+description = "Katunog API"
+authors = ["Fred Tupas <fred.tupas21@gmail.com>"]
+license = "MIT"
+readme = "README.md"
+
+[tool.poetry.dependencies]
+python = "^3.11"
+requests = "^2.32.3"
+
+[tool.poetry.group.dev.dependencies]
+types-requests = "^2.32.0.20240602"
+
+[build-system]
+requires = ["poetry-core"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.poetry.dev-dependencies]
+Flake8-pyproject = "^1.1.0"
+autopep8 = "^2.0.0"
+black = "^24.4.2"
+coverage = "^7.2.3"
+flake8 = "^7.0.0"
+flake8-formatter-junit-xml = "^0.0.6"
+isort = "^5.10.1"
+mypy = "^1.8.0"
+pre-commit = "^3.6.2"
+pycodestyle = "^2.11.1"
+pytest = "^8.1.0"
+pytest-aiohttp = "^1.0.4"
+pytest-asyncio = "^0.23.5"
+pytest-azurepipelines = "^1.0.3"
+pytest-cov = "^4.0.0"
+toml = "^0.10.2"
+
+[tool.flake8]
+extend-exclude = [
+    ".devcontainer/*/",
+    ".idea/*",
+    ".mypy_cache/*",
+    ".venv/*",
+    ".vscode/*",
+    "dist/*",
+    "reports/*",
+    "bin/*",
+    "local_devkit/*",
+    "proto/*",
+    "out/*"
+]
+max-complexity = 12
+max-line-length = 120
+min_python_version = "3.9.0"
+
+
+[tool.mypy]
+check_untyped_defs = true
+files = [
+    "**/*.py"
+]
+ignore_errors = false
+ignore_missing_imports = true
+strict_optional = true
+warn_redundant_casts = true
+warn_unused_configs = true
+warn_unused_ignores = true
+allow_redefinition = true
+namespace_packages = true
+explicit_package_bases = true
+
+[[tool.mypy.overrides]]
+module = [
+    "proto.*",
+]
+ignore_errors = true
+
+
+[tool.isort]
+combine_as_imports = true
+force_grid_wrap = false
+force_sort_within_sections = true
+include_trailing_comma = true
+line_length = 120
+multi_line_output = 3
+profile = "black"
+py_version = 39
+
+
+[tool.black]
+exclude = '''
+/(
+    \.git
+  | \.idea
+  | \.mypy_cache
+  | \.pytest_cache
+  | \.venv
+  | bin
+)/
+'''
+line-length = 120
+skip-string-normalization = false
+target_version = ['py38', 'py39']
+
+
+
+[tool.pytest.ini_options]
+minversion = "6.0"
+addopts = """
+    --capture=no
+    --pythonwarnings=error
+    --showlocals
+    -o junit_family=xunit2
+    --junitxml=reports/junit.xml
+ """
+testpaths = [
+    "tests",
+]
+
+[tool.coverage.run]
+omit = [
+    "*/virtualenvs/*",
+    "tests/*",
+    "*/caerus/core/*",
+    "*/caerus/domain/*",
+    "*/caerus/common/*",
+    "*/caerus/monitoring/*",
+    "*/caerus/test/*"
+]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "def __str__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "class .*\\bProtocol\\):",
+    "@(abc\\.)?abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "reports/site"
+
+[tool.coverage.xml]
+output = "reports/coverage.xml"   # It does not pick this up apparently
