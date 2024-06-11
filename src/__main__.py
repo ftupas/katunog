@@ -18,7 +18,7 @@ logger = logging.getLogger(__name__)
 
 async def main():
     try:
-        instrument_list = await InstrumentList(ssl=False).get_data(page=1, limit=1000)
+        instrument_list = await InstrumentList(ssl=False).get_data(page=1, limit=1)
         logger.info(f"Instrument List: {instrument_list}")
 
         instrument_location = await InstrumentLocation(ssl=False).get_data(page=1, limit=1)
@@ -43,7 +43,7 @@ async def main():
         logger.error(f"An error occurred: {e}")
 
     # Download samples
-    await InstrumentMediaFiles(ssl=False).download_files()
+    await InstrumentMediaFiles(ssl=False).download_files(page=1, limit=1000)
 
 
 if __name__ == "__main__":
