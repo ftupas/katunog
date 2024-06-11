@@ -12,18 +12,18 @@ from tests.unit.abstract_function_test_case import AbstractFunctionTestCase
 
 
 class TestInstrumentAPIBase(AbstractFunctionTestCase):
-    def assert_get_data(self, api_instance: KatunogAPI, query: str, *args, **kwargs):
-        api_instance.get_data(*args, **kwargs)
+    async def assert_get_data(self, api_instance: KatunogAPI, query: str, *args, **kwargs):
+        await api_instance.get_data(*args, **kwargs)
         self.mock_post.assert_called_once_with(
             api_instance.API_URL,
             headers=api_instance.HEADERS,
             json={"query": query},
-            verify=api_instance.verify,
+            ssl=api_instance.ssl,
         )
 
 
 class TestInstrumentList(TestInstrumentAPIBase):
-    def test_get_data(self):
+    async def test_get_data(self):
         page = limit = 1
         filter = "katunog"
         query = f"""
@@ -80,11 +80,11 @@ class TestInstrumentList(TestInstrumentAPIBase):
             }}
         }}
         """
-        self.assert_get_data(InstrumentList(), query, page=page, limit=limit, filter=filter)
+        await self.assert_get_data(InstrumentList(), query, page=page, limit=limit, filter=filter)
 
 
 class TestInstrumentLocation(TestInstrumentAPIBase):
-    def test_get_data(self):
+    async def test_get_data(self):
         page = limit = 1
         query = f"""
         {{
@@ -106,11 +106,11 @@ class TestInstrumentLocation(TestInstrumentAPIBase):
             }}
         }}
         """
-        self.assert_get_data(InstrumentLocation(), query, page=page, limit=limit)
+        await self.assert_get_data(InstrumentLocation(), query, page=page, limit=limit)
 
 
 class TestInstrumentDescriptions(TestInstrumentAPIBase):
-    def test_get_data(self):
+    async def test_get_data(self):
         page = limit = 1
         query = f"""
         {{
@@ -137,11 +137,11 @@ class TestInstrumentDescriptions(TestInstrumentAPIBase):
             }}
         }}
         """
-        self.assert_get_data(InstrumentDescriptions(), query, page=page, limit=limit)
+        await self.assert_get_data(InstrumentDescriptions(), query, page=page, limit=limit)
 
 
 class TestInstrumentMediaFiles(TestInstrumentAPIBase):
-    def test_get_data(self):
+    async def test_get_data(self):
         page = limit = 1
         query = f"""
         {{
@@ -172,11 +172,11 @@ class TestInstrumentMediaFiles(TestInstrumentAPIBase):
             }}
         }}
         """
-        self.assert_get_data(InstrumentMediaFiles(), query, page=page, limit=limit)
+        await self.assert_get_data(InstrumentMediaFiles(), query, page=page, limit=limit)
 
 
 class TestInstrumentById(TestInstrumentAPIBase):
-    def test_get_data(self):
+    async def test_get_data(self):
         instrument_id = "SW5zdHJ1bWVudFR5cGU6MjY1MA=="
         query = f"""
         {{
@@ -196,11 +196,11 @@ class TestInstrumentById(TestInstrumentAPIBase):
             }}
         }}
         """
-        self.assert_get_data(InstrumentById(), query, instrument_id=instrument_id)
+        await self.assert_get_data(InstrumentById(), query, instrument_id=instrument_id)
 
 
 class TestRegionAndIslandList(TestInstrumentAPIBase):
-    def test_get_data(self):
+    async def test_get_data(self):
         query = """
         {
             regions {
@@ -211,11 +211,11 @@ class TestRegionAndIslandList(TestInstrumentAPIBase):
             }
         }
         """
-        self.assert_get_data(RegionAndIslandList(), query)
+        await self.assert_get_data(RegionAndIslandList(), query)
 
 
 class TestProvinceList(TestInstrumentAPIBase):
-    def test_get_data(self):
+    async def test_get_data(self):
         query = """
         {
             provinces {
@@ -224,4 +224,4 @@ class TestProvinceList(TestInstrumentAPIBase):
             }
         }
         """
-        self.assert_get_data(ProvinceList(), query)
+        await self.assert_get_data(ProvinceList(), query)

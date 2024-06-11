@@ -8,7 +8,7 @@ class AbstractFunctionTestCase(unittest.IsolatedAsyncioTestCase, ABC):
 
     def setUp(self):
         super().setUp()
-        self.patch_post = patch("src.katunog.api.requests.post", return_value=self.post)
+        self.patch_post = patch("src.katunog.api.aiohttp.ClientSession.post", return_value=self.post)
         self.mock_post = self.patch_post.start()
 
     def tearDown(self):

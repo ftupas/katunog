@@ -2,7 +2,7 @@ from abc import ABC, abstractmethod
 import os
 from typing import Any, Dict
 
-import requests
+import aiohttp
 
 
 class KatunogAPI(ABC):
@@ -14,22 +14,25 @@ class KatunogAPI(ABC):
     API_URL = f"{BASE_URL}/api/"
     HEADERS = {"Content-Type": "application/json"}
 
-    def __init__(self, verify: bool = True):
-        self.verify = verify
+    def __init__(self, ssl: bool = True):
+        self.ssl = ssl
 
     @abstractmethod
-    def get_data(self, *args, **kwargs):
+    async def get_data(self, *args, **kwargs):
         pass
 
-    def _post_request(self, query: str) -> Dict[Any, Any]:
-        response = requests.post(self.API_URL, headers=self.HEADERS, json={"query": query}, verify=self.verify)
-        return response.json()
+    async def _post_request(self, query: str) -> Dict[Any, Any]:
+        async with aiohttp.ClientSession() as session:
+            async with session.post(
+                self.API_URL, headers=self.HEADERS, json={"query": query}, ssl=self.ssl
+            ) as response:
+                return await response.json()
 
 
 class InstrumentList(KatunogAPI):
     """Get the list of musical instrument"""
 
-    def get_data(self, page: int = 1, limit: int = 10, filter: str = "katunog"):
+    async def get_data(self, page: int = 1, limit: int = 10, filter: str = "katunog"):
         query = f"""
         {{
             instruments(page: {page}, limit: {limit}, filter: "{filter}") {{
@@ -84,13 +87,13 @@ class InstrumentList(KatunogAPI):
             }}
         }}
         """
-        return self._post_request(query)
+        return await self._post_request(query)
 
 
 class InstrumentLocation(KatunogAPI):
     """Get the location of instrument like island, region, province, city."""
 
-    def get_data(self, page: int = 1, limit: int = 10):
+    async def get_data(self, page: int = 1, limit: int = 10):
         query = f"""
         {{
             instruments(page: {page}, limit: {limit}) {{
@@ -111,13 +114,13 @@ class InstrumentLocation(KatunogAPI):
             }}
         }}
         """
-        return self._post_request(query)
+        return await self._post_request(query)
 
 
 class InstrumentDescriptions(KatunogAPI):
     """Get the description of musical instrument in English and Filipino"""
 
-    def get_data(self, page: int = 1, limit: int = 10):
+    async def get_data(self, page: int = 1, limit: int = 10):
         query = f"""
         {{
             instruments(page: {page}, limit: {limit}) {{
@@ -143,13 +146,13 @@ class InstrumentDescriptions(KatunogAPI):
             }}
         }}
         """
-        return self._post_request(query)
+        return await self._post_request(query)
 
 
 class InstrumentMediaFiles(KatunogAPI):
     """Get the available files of the instrument like images, audios and videos"""
 
-    def get_data(self, page: int = 1, limit: int = 10):
+    async def get_data(self, page: int = 1, limit: int = 10):
         query = f"""
         {{
             instruments(page: {page}, limit: {limit}) {{
@@ -179,46 +182,47 @@ class InstrumentMediaFiles(KatunogAPI):
             }}
         }}
         """
-        return self._post_request(query)
+        return await self._post_request(query)
 
-    def download_files(self, page: int = 1, limit: int = 10, folder: str = "downloads", file_type: str = ""):
+    async def download_files(self, page: int = 1, limit: int = 10, folder: str = "downloads", file_type: str = ""):
         # Ensure the folder exists
         os.makedirs(folder, exist_ok=True)
 
-        data = self.get_data(page, limit)
+        data = await self.get_data(page, limit)
         instruments = data.get("data", {}).get("instruments", {}).get("objects", [])
 
-        for instrument in instruments:
-            file_set = instrument.get("fileSet", {}).get("edges", [])
+        async with aiohttp.ClientSession() as session:
+            for instrument in instruments:
+                file_set = instrument.get("fileSet", {}).get("edges", [])
 
-            for file_info in file_set:
-                node = file_info.get("node", {})
-                file_name = node.get("name")
-                file_path = node.get("path")
+                for file_info in file_set:
+                    node = file_info.get("node", {})
+                    file_name = node.get("name")
+                    file_path = node.get("path")
 
-                # Filter by file type if specified
-                if file_type and not file_name.endswith(file_type):
-                    continue
+                    # Filter by file type if specified
+                    if file_type and not file_name.endswith(file_type):
+                        continue
 
-                # Construct the full URL for the file
-                file_url = f"{self.BASE_URL}/api/{file_path}"
+                    # Construct the full URL for the file
+                    file_url = f"{self.BASE_URL}/api/{file_path}"
 
-                # Download the file
-                response = requests.get(file_url, stream=True, verify=self.verify)
-                if response.status_code == 200:
-                    file_full_path = os.path.join(folder, file_name)
-                    with open(file_full_path, "wb") as f:
-                        for chunk in response.iter_content(1024):
-                            f.write(chunk)
-                    print(f"Downloaded {file_name} to {file_full_path}")
-                else:
-                    print(f"Failed to download {file_name}")
+                    # Download the file
+                    async with session.get(file_url, ssl=self.verify) as response:
+                        if response.status == 200:
+                            file_full_path = os.path.join(folder, file_name)
+                            with open(file_full_path, "wb") as f:
+                                async for chunk in response.content.iter_chunked(1024):
+                                    f.write(chunk)
+                            print(f"Downloaded {file_name} to {file_full_path}")
+                        else:
+                            print(f"Failed to download {file_name}")
 
 
 class InstrumentById(KatunogAPI):
     """Get the specific instrument"""
 
-    def get_data(self, instrument_id: str):
+    async def get_data(self, instrument_id: str):
         query = f"""
         {{
             instrument(id: "{instrument_id}") {{
@@ -237,13 +241,13 @@ class InstrumentById(KatunogAPI):
             }}
         }}
         """
-        return self._post_request(query)
+        return await self._post_request(query)
 
 
 class RegionAndIslandList(KatunogAPI):
     """This endpoint allows users to get the list of the region and island"""
 
-    def get_data(self):
+    async def get_data(self):
         query = """
         {
             regions {
@@ -254,13 +258,13 @@ class RegionAndIslandList(KatunogAPI):
             }
         }
         """
-        return self._post_request(query)
+        return await self._post_request(query)
 
 
 class ProvinceList(KatunogAPI):
     """This endpoint will show all the province available in database"""
 
-    def get_data(self):
+    async def get_data(self):
         query = """
         {
             provinces {
@@ -269,4 +273,4 @@ class ProvinceList(KatunogAPI):
             }
         }
         """
-        return self._post_request(query)
+        return await self._post_request(query)
