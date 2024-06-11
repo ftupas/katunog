@@ -1,5 +1,7 @@
 from abc import ABC, abstractmethod
+import logging
 import os
+import re
 from typing import Any, Dict
 
 import aiohttp
@@ -184,39 +186,62 @@ class InstrumentMediaFiles(KatunogAPI):
         """
         return await self._post_request(query)
 
-    async def download_files(self, page: int = 1, limit: int = 10, folder: str = "downloads", file_type: str = ""):
+    async def download_files(self, page: int = 1, limit: int = 10, folder: str = "downloads", file_type: str = "audio"):
         # Ensure the folder exists
         os.makedirs(folder, exist_ok=True)
 
         data = await self.get_data(page, limit)
         instruments = data.get("data", {}).get("instruments", {}).get("objects", [])
 
+        processed_instruments = set()
+
         async with aiohttp.ClientSession() as session:
             for instrument in instruments:
                 file_set = instrument.get("fileSet", {}).get("edges", [])
+                instrument_id = instrument.get("id")
+                instrument_name = (
+                    (await InstrumentById(ssl=self.ssl).get_data(instrument_id))
+                    .get("data", {})
+                    .get("instrument", {})
+                    .get("localName")
+                )
 
                 for file_info in file_set:
                     node = file_info.get("node", {})
-                    file_name = node.get("name")
                     file_path = node.get("path")
 
-                    # Filter by file type if specified
-                    if file_type and not file_name.endswith(file_type):
+                    # Extract instrument download ID from the file path
+                    instrument_download_id = self.extract_instrument_download_id(file_path)
+                    if not instrument_download_id:
+                        logging.error(f"Failed to extract instrument ID from path: {file_path}")
                         continue
 
-                    # Construct the full URL for the file
-                    file_url = f"{self.BASE_URL}/api/{file_path}"
+                    # Skip if this instrument has already been processed
+                    if instrument_download_id in processed_instruments:
+                        continue
+                    logging.info(f"Extracted ID: {instrument_download_id} for {instrument_name}")
+                    processed_instruments.add(instrument_download_id)
+
+                    download_url = f"{self.BASE_URL}/instruments/download_all_files?instrument_id={instrument_download_id}&file_type={file_type}"
+                    logging.info(f"Downloading {instrument_name} from {download_url}")
 
                     # Download the file
-                    async with session.get(file_url, ssl=self.verify) as response:
+                    async with session.get(download_url, ssl=self.ssl) as response:
                         if response.status == 200:
-                            file_full_path = os.path.join(folder, file_name)
+                            file_full_path = os.path.join(folder, f"{instrument_name}.zip")
                             with open(file_full_path, "wb") as f:
                                 async for chunk in response.content.iter_chunked(1024):
                                     f.write(chunk)
-                            print(f"Downloaded {file_name} to {file_full_path}")
+                            logging.info(f"Downloaded {instrument_name} to {file_full_path}")
                         else:
-                            print(f"Failed to download {file_name}")
+                            logging.error(f"Failed to download {instrument_name} from {download_url}")
+
+    def extract_instrument_download_id(self, path: str) -> str:
+        instrument = re.compile(r"PIISD0(\d+)/")
+        match = instrument.search(path)
+        if match:
+            return match.group(1)
+        return None
 
 
 class InstrumentById(KatunogAPI):
