@@ -1,4 +1,5 @@
 from abc import ABC, abstractmethod
+import asyncio
 import logging
 import os
 import re
@@ -186,7 +187,9 @@ class InstrumentMediaFiles(KatunogAPI):
         """
         return await self._post_request(query)
 
-    async def download_files(self, page: int = 1, limit: int = 10, folder: str = "downloads", file_type: str = "audio"):
+    async def download_files(
+        self, page: int = 1, limit: int = 10, folder: str = "downloads", file_type: str = "audio", num_threads: int = 5
+    ):
         # Ensure the folder exists
         os.makedirs(folder, exist_ok=True)
 
@@ -199,6 +202,7 @@ class InstrumentMediaFiles(KatunogAPI):
         processed_instruments = set()
 
         async with aiohttp.ClientSession() as session:
+            tasks = []
             for instrument in instruments:
                 file_set = instrument.get("fileSet", {}).get("edges", [])
                 instrument_id = instrument.get("id")
@@ -228,21 +232,34 @@ class InstrumentMediaFiles(KatunogAPI):
                     download_url = f"{self.BASE_URL}/instruments/download_all_files?instrument_id={instrument_download_id}&file_type={file_type}"
                     logging.info(f"Downloading {instrument_name} from {download_url}")
 
-                    # Download the file
+                    # Create a task for downloading the file
                     file_name = f"{instrument_name}.zip"
                     exists = file_name in existing_files
                     if not exists:
-                        async with session.get(download_url, ssl=self.ssl) as response:
-                            if response.status == 200 and not exists:
-                                file_full_path = os.path.join(folder, f"{instrument_name}.zip")
-                                with open(file_full_path, "wb") as f:
-                                    async for chunk in response.content.iter_chunked(1024):
-                                        f.write(chunk)
-                                logging.info(f"Downloaded {instrument_name} to {file_full_path}")
-                            else:
-                                logging.error(f"Failed to download {instrument_name} from {download_url}")
+                        tasks.append(
+                            self.download_file(session, download_url, os.path.join(folder, file_name), instrument_name)
+                        )
                     else:
                         logging.info(f"{instrument_name} already exists in {folder}")
+
+                    # Limit the number of concurrent tasks
+                    if len(tasks) >= num_threads:
+                        await asyncio.gather(*tasks)
+                        tasks = []
+
+            # Run any remaining tasks
+            if tasks:
+                await asyncio.gather(*tasks)
+
+    async def download_file(self, session: aiohttp.ClientSession, url: str, file_path: str, instrument_name: str):
+        async with session.get(url, ssl=self.ssl) as response:
+            if response.status == 200:
+                with open(file_path, "wb") as f:
+                    async for chunk in response.content.iter_chunked(1024):
+                        f.write(chunk)
+                logging.info(f"Downloaded {instrument_name} to {file_path}")
+            else:
+                logging.error(f"Failed to download {instrument_name} from {url}")
 
     def extract_instrument_download_id(self, path: str) -> str:
         instrument = re.compile(r"PIISD0(\d+)/")
