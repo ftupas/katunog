@@ -3,9 +3,10 @@ import asyncio
 import logging
 import os
 import re
-from typing import Any, Dict
+from typing import Any, Dict, Union
 
 import aiohttp
+import pandas as pd
 
 
 class KatunogAPI(ABC):
@@ -91,6 +92,45 @@ class InstrumentList(KatunogAPI):
         }}
         """
         return await self._post_request(query)
+
+    def to_dataframe(self, instrument_data: Dict[Any, Any]):
+        items = instrument_data.get("data", {}).get("instruments", {}).get("objects", [])
+        instruments_list = []
+
+        for item in items:
+            city = item.get("city", {})
+            province = item.get("province", {})
+            english = item.get("english", {})
+            hornbostel = item.get("hornbostel", {})
+
+            city_name = city.get("name", "") if city else ""
+            province_name = province.get("name", "") if province else ""
+            material_and_make = english.get("materialAndMake", "") if english else ""
+            hornbostel_name = hornbostel.get("name", "") if hornbostel else ""
+
+            instrument = {
+                "Instrument": item.get("localName", ""),
+                "Ethnolinguistic Group": item.get("ethnolinguistic", {}).get("name", ""),
+                "Location": f"{city_name}, {province_name}",
+                "English Name": item.get("englishName", ""),
+                "Materials and Make Classification": material_and_make,
+                "Hornbostel": hornbostel_name,
+            }
+            instruments_list.append(instrument)
+
+        df = pd.DataFrame(
+            instruments_list,
+            columns=[
+                "Instrument",
+                "Ethnolinguistic Group",
+                "Location",
+                "English Name",
+                "Materials and Make Classification",
+                "Horbostel",
+            ],
+        )
+
+        return df
 
 
 class InstrumentLocation(KatunogAPI):
@@ -229,7 +269,7 @@ class InstrumentMediaFiles(KatunogAPI):
                     logging.info(f"Extracted ID: {instrument_download_id} for {instrument_name}")
                     processed_instruments.add(instrument_download_id)
 
-                    download_url = f"{self.BASE_URL}/instruments/download_all_files?instrument_id={instrument_download_id}&file_type={file_type}"
+                    download_url = f"{self.BASE_URL}/instruments/download_all_files?instrument_id={instrument_download_id}&file_type={file_type}"  # noqa: E501
                     logging.info(f"Downloading {instrument_name} from {download_url}")
 
                     # Create a task for downloading the file
@@ -261,7 +301,7 @@ class InstrumentMediaFiles(KatunogAPI):
             else:
                 logging.error(f"Failed to download {instrument_name} from {url}")
 
-    def extract_instrument_download_id(self, path: str) -> str:
+    def extract_instrument_download_id(self, path: str) -> Union[str, None]:
         instrument = re.compile(r"PIISD0(\d+)/")
         match = instrument.search(path)
         if match:

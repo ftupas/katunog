@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 async def main():
     try:
         instrument_list = await InstrumentList(ssl=False).get_data(page=1, limit=1)
-        logger.info(f"Instrument List: {instrument_list}")
+        df = InstrumentList().to_dataframe(instrument_list)
+        logger.info(f"Instrument List: {df}")
 
         instrument_location = await InstrumentLocation(ssl=False).get_data(page=1, limit=1)
         logger.info(f"Instrument Location: {instrument_location}")
@@ -48,6 +49,7 @@ async def main():
 
     # Unzip samples
     Unzipper("samples", "unzipped").unzip_files()
+
 
 if __name__ == "__main__":
     asyncio.run(main())
